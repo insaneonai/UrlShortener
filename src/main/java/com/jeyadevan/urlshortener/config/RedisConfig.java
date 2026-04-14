@@ -4,7 +4,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
+import org.springframework.data.redis.serializer.JacksonJsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 import com.jeyadevan.urlshortener.model.urlEntity;
@@ -21,8 +21,8 @@ public class RedisConfig {
         template.setKeySerializer(new StringRedisSerializer());
         template.setHashKeySerializer(new StringRedisSerializer());
 
-        // Value serializer as JSON
-        GenericJackson2JsonRedisSerializer serializer = new GenericJackson2JsonRedisSerializer();
+        // Value serializer as typed JSON
+        JacksonJsonRedisSerializer<urlEntity> serializer = new JacksonJsonRedisSerializer<>(urlEntity.class);
         template.setValueSerializer(serializer);
         template.setHashValueSerializer(serializer);
 

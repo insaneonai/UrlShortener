@@ -15,7 +15,12 @@ import java.net.URISyntaxException;
 import com.jeyadevan.urlshortener.dto.FullUrl;
 import com.jeyadevan.urlshortener.dto.ShortUrl;
 import com.jeyadevan.urlshortener.services.urlService;
+
+import jakarta.servlet.http.HttpServletRequest;
+
+import com.jeyadevan.urlshortener.services.analyticsService;
 import com.jeyadevan.urlshortener.services.cacheService;
+import com.jeyadevan.urlshortener.common.LocationUtil;
 import com.jeyadevan.urlshortener.model.urlEntity;
 import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
@@ -25,7 +30,9 @@ public class urlController {
     Logger logger = LoggerFactory.getLogger(urlController.class);
     private final urlService urlService;
     private final cacheService cacheService;
-    
+    private final analyticsService analyticsService;
+    private final LocationUtil locationUtil;
+
     private ResponseEntity<Void> createRedirectResponse(FullUrl fullUrl) {
         try {
             URI uri = new URI(fullUrl.getOriginalUrl());
@@ -39,9 +46,12 @@ public class urlController {
     }
 
     @Autowired
-    public urlController(urlService urlService, cacheService cacheService) {
+    public urlController(urlService urlService, cacheService cacheService, analyticsService analyticsService, LocationUtil locationUtil) {
         this.urlService = urlService;
         this.cacheService = cacheService;
+        this.analyticsService = analyticsService;
+        this.locationUtil = locationUtil;
+
     }
 
     @GetMapping("/health")
@@ -57,15 +67,17 @@ public class urlController {
         return ResponseEntity.ok(shortUrl);
     }
 
-    @GetMapping("/{shortUrl}")
-    public ResponseEntity<Void> redirectToFullUrl(@PathVariable String shortUrl){
-               // Todo: Use a separate service for storing metadata like location, timestamp, click-count update etc. for analytics and monitoring purposes
+    @GetMapping("/{shortUrl:[a-zA-Z0-9]+}")
+    public ResponseEntity<Void> redirectToFullUrl(@PathVariable String shortUrl, HttpServletRequest request){
         logger.debug("Received request to redirect short URL: {}", shortUrl);
         FullUrl fullUrl=null;
         // 1) check Redis cache first for better performance
         urlEntity cached = cacheService.getUrlFromCache(shortUrl);
         if (cached != null) {
             logger.info("Cache hit for short URL: {}", shortUrl);
+            String location = locationUtil.getLocationFromIP(request);
+            String deviceType = request.getHeader("User-Agent");
+            analyticsService.logClickEvent(shortUrl, location, deviceType);
             fullUrl = new FullUrl(cached.getOriginalUrl());
             return createRedirectResponse(fullUrl);
         }
@@ -75,6 +87,9 @@ public class urlController {
         if (urlEntity != null) {
             logger.info("Redirecting to original URL: {}", urlEntity.getOriginalUrl());
             cacheService.putUrlInCache(urlEntity); // cache the result for future requests
+            String location = locationUtil.getLocationFromIP(request);
+            String deviceType = request.getHeader("User-Agent");
+            analyticsService.logClickEvent(shortUrl, location, deviceType);
             return createRedirectResponse(new FullUrl(urlEntity.getOriginalUrl()));
         } else {
             logger.warn("No original URL found for short URL: {}", shortUrl);
