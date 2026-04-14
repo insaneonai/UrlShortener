@@ -36,10 +36,20 @@ public class urlController {
 
     @PostMapping("/shorten")
     public ResponseEntity<ShortUrl> shortenUrl(@RequestBody FullUrl fullUrl) {
-        logger.info("Received request to shorten URL: {}", fullUrl.getOriginalUrl());
-        ShortUrl shortUrl = urlService.generateShortUrl(fullUrl);
-        logger.info("Generated short URL: {}", shortUrl.getShortUrl());
-        return ResponseEntity.ok(shortUrl);
+        if (fullUrl == null || fullUrl.getOriginalUrl() == null || fullUrl.getOriginalUrl().isBlank()) {
+            logger.warn("Received invalid shorten request: missing originalUrl");
+            return ResponseEntity.badRequest().build();
+        }
+
+        try {
+            logger.info("Received request to shorten URL: {}", fullUrl.getOriginalUrl());
+            ShortUrl shortUrl = urlService.generateShortUrl(fullUrl);
+            logger.info("Generated short URL: {}", shortUrl.getShortUrl());
+            return ResponseEntity.ok(shortUrl);
+        } catch (IllegalArgumentException ex) {
+            logger.warn("URL validation failed: {}", ex.getMessage());
+            return ResponseEntity.badRequest().build();
+        }
     }
 
     @GetMapping("/{shortUrl}")

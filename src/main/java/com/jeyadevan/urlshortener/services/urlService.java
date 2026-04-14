@@ -9,6 +9,8 @@ import com.jeyadevan.urlshortener.dto.ShortUrl;
 import com.jeyadevan.urlshortener.common.urlidGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.net.URI;
+import java.net.URISyntaxException;
 
 @Service
 public class urlService {
@@ -18,23 +20,29 @@ public class urlService {
     private final urlidGenerator urlIdGenerator;
 
     @Autowired
-    public urlService(urlRepository urlRepository,urlidGenerator urlIdGenerator){ 
+    public urlService(urlRepository urlRepository, urlidGenerator urlIdGenerator){ 
         this.urlRepository = urlRepository;
         this.urlIdGenerator = urlIdGenerator;
     }
 
     public ShortUrl generateShortUrl(FullUrl fullUrl){
-        String originalUrl = fullUrl.getOriginalUrl();
+        if (fullUrl == null || fullUrl.getOriginalUrl() == null || fullUrl.getOriginalUrl().isBlank()) {
+            logger.warn("Invalid request: originalUrl is missing or empty");
+            throw new IllegalArgumentException("originalUrl must be provided");
+        }
 
-        // Hash the original URL to generate a unique short URL
+        String originalUrl = fullUrl.getOriginalUrl().trim();
+        if (!isValidUrl(originalUrl)) {
+            logger.warn("Invalid URL received: {}", originalUrl);
+            throw new IllegalArgumentException("originalUrl must be a valid HTTP/HTTPS URL");
+        }
+
         logger.info("Generating short URL for: {}", originalUrl);
         String shortUrl = urlIdGenerator.generateUniqueId();
 
-        // Save the mapping to the database
         urlEntity urlEntity = new urlEntity(originalUrl, shortUrl);
         urlRepository.save(urlEntity);
 
-        // Return the short URL to the client
         return new ShortUrl(shortUrl);
     }
 
@@ -50,5 +58,15 @@ public class urlService {
         }
     }
 
-    
+    private boolean isValidUrl(String url) {
+        try {
+            URI uri = new URI(url);
+            String scheme = uri.getScheme();
+            String host = uri.getHost();
+            return scheme != null && host != null && (scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"));
+        } catch (URISyntaxException e) {
+            return false;
+        }
+    }
 }
+
