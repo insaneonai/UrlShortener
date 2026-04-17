@@ -22,4 +22,18 @@ public interface clickEventRepository extends MongoRepository<clickEventEntity, 
     })
     List<DeviceCount> countClicksByDeviceType();
 
+    // Aggregation query to get count by location for specific urlId
+    @Aggregation(pipeline = {
+        "{ $match: { urlId: ?0 } }",
+        "{ $group: { _id: '$location', count: { $sum: 1 } } }"
+    })
+    List<LocationCount> countClicksByLocationByUrlId(String urlId);
+
+    // Aggregation query to get count by device type for specific urlId
+    @Aggregation(pipeline = {
+        "{ $match: { urlId: ?0 } }",
+        "{ $group: { _id: '$deviceType', count: { $sum: 1 } } }"
+    })
+    List<DeviceCount> countClicksByDeviceTypeByUrlId(String urlId);
+
 }

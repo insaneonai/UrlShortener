@@ -44,4 +44,14 @@ public class analyticsService {
         clickEventRepository.save(clickEvent);
     }
 
+    public List<LocationCount> getLocationCounts(String urlId) {
+        logger.info("Fetching location counts for URL ID: {}", urlId);
+        return clickEventRepository.countClicksByLocationByUrlId(urlId);
+    }
+
+    public List<DeviceCount> getDeviceCounts(String urlId) {
+        logger.info("Fetching device counts for URL ID: {}", urlId);
+        return clickEventRepository.countClicksByDeviceTypeByUrlId(urlId);
+    }
+
 }
